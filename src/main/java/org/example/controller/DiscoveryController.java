@@ -10,12 +10,13 @@ import org.example.service.DiscoveryService;
 public class DiscoveryController {
 
     private DiscoveryService discoveryService;
+    private String baseUrl = "/api/v1";
 
     public DiscoveryController(Router router, Vertx vertx){
 
         discoveryService = new DiscoveryService(vertx);
 
-        router.post(Constants.baseUrl + "/discovery/create").handler(this::createDiscovery);
+        router.post(baseUrl + "/discovery/create").handler(this::createDiscovery);
 
     }
 

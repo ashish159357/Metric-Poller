@@ -10,12 +10,13 @@ import org.example.service.CredentialProfileService;
 public class CredentialProfileController {
 
     private CredentialProfileService credentialProfileService;
+    private String baseUrl = "/api/v1";
 
     public CredentialProfileController(Router router,Vertx vertx){
 
         credentialProfileService = new CredentialProfileService(vertx);
 
-        router.post(Constants.baseUrl + "/credential-profile/create").handler(this::createCredentialProfile);
+        router.post(baseUrl + "/credential-profile/create").handler(this::createCredentialProfile);
 
     }
 

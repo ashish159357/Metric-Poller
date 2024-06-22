@@ -6,6 +6,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.example.config.ProcessBuilderConfig;
 import org.example.constant.Constants;
+import org.example.constant.EventBusAddresses;
 import org.example.model.CredentialProfile;
 import org.example.model.Discovery;
 
@@ -22,7 +23,7 @@ public class DiscoveryService {
 
     public void createDiscovery(JsonObject dicovery, RoutingContext routingContext){
 
-        vertx.eventBus().request(Constants.DATABASE_SELECT_CREDENTIALPROIFILE, dicovery, reply -> {
+        vertx.eventBus().request(EventBusAddresses.DATABASE_SELECT_CREDENTIALPROIFILE, dicovery, reply -> {
 
             if (reply.succeeded()) {
 

@@ -4,6 +4,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.example.constant.Constants;
+import org.example.constant.EventBusAddresses;
 
 public class CredentialProfileService {
 
@@ -13,9 +14,9 @@ public class CredentialProfileService {
         this.vertx = vertx;
     }
 
-    public void createCredentialProfile(JsonObject body, RoutingContext rc){
+    public void createCredentialProfile(JsonObject credentialProfile, RoutingContext rc){
 
-        vertx.eventBus().request(Constants.DATABASE_INSERT, body, reply -> {
+        vertx.eventBus().request(EventBusAddresses.DATABASE_INSERT, credentialProfile, reply -> {
 
             if (reply.succeeded()) {
 
