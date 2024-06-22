@@ -32,6 +32,7 @@ public class DiscoveryController {
             return;
         }
 
+
         discoveryService.createDiscovery(body,routingContext);
     }
 }

@@ -26,8 +26,6 @@ public class CredentialProfileService {
                 rc.response().setStatusCode(500).end(reply.cause().getMessage());
 
             }
-
         });
     }
-
 }

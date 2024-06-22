@@ -105,8 +105,6 @@ public class DatabaseVerticle extends AbstractVerticle {
                         res.cause().printStackTrace();
                     }
 
-                    // Close the connection
-                    client.close();
                 });
     }
 
