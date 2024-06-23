@@ -16,16 +16,12 @@ public class CredentialProfileService {
 
     public void createCredentialProfile(JsonObject credentialProfile, RoutingContext rc){
 
+        credentialProfile.put(Constants.DAO_KEY,Constants.CREDENTIAL_PROFILE_DAO_NAME);
         vertx.eventBus().request(EventBusAddresses.DATABASE_INSERT, credentialProfile, reply -> {
-
             if (reply.succeeded()) {
-
                 rc.response().setStatusCode(200).end(reply.result().body().toString());
-
             } else {
-
                 rc.response().setStatusCode(500).end(reply.cause().getMessage());
-
             }
         });
     }

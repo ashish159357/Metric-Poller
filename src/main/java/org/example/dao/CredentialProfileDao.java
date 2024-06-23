@@ -3,16 +3,15 @@ package org.example.dao;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
-import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import org.example.config.DataBaseConfig;
 import org.example.enums.CredentialProfileEnum;
 
-public class CredentialProfileDao {
+public class CredentialProfileDao extends DaoAbstract {
 
-    private static PgPool client;
+//    private static PgPool client;
 
     private static CredentialProfileDao credentialProfileDaoInstance = null;
 
@@ -35,21 +34,7 @@ public class CredentialProfileDao {
 
         String password = data.getString("password");
 
-        client.preparedQuery(CredentialProfileEnum.INSERT_CREDENTIAL_PROFILE.getQuery())
-
-                .execute(Tuple.of(credentialProfileName,username,password), ar -> {
-
-                    if (ar.succeeded()) {
-
-                        message.reply("Data inserted successfully");
-
-                    } else {
-
-                        message.fail(500, ar.cause().getMessage());
-
-                    }
-
-                });
+        insert(CredentialProfileEnum.INSERT_CREDENTIAL_PROFILE.getQuery(),message,Tuple.of(credentialProfileName,username,password));
     }
 
 

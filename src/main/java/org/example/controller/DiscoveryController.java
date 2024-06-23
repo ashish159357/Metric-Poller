@@ -13,11 +13,8 @@ public class DiscoveryController {
     private String baseUrl = "/api/v1";
 
     public DiscoveryController(Router router, Vertx vertx){
-
         discoveryService = new DiscoveryService(vertx);
-
         router.post(baseUrl + "/discovery/create").handler(this::createDiscovery);
-
     }
 
     public void createDiscovery(RoutingContext routingContext) {
@@ -32,7 +29,6 @@ public class DiscoveryController {
                     .end(new JsonObject().put("error", "Invalid JSON body").encodePrettily());
             return;
         }
-
 
         discoveryService.createDiscovery(body,routingContext);
     }
