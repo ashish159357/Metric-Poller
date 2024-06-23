@@ -9,15 +9,13 @@ public class ProcessBuilderConfig {
     private ProcessBuilder processBuilder;
 
     public ProcessBuilderConfig(String command){
-
         processBuilder = new ProcessBuilder("bash", "-c", command);
 
+        // setting enviroment to process
         Map<String, String> env = processBuilder.environment();
-
         env.put("PATH",env.get("PATH") + ":/home/ashish/a4h-personal/Software/go1.22.4.linux-amd64/go/bin");
 
         processBuilder.directory(new File("/home/ashish/a4h-personal/Prototype/go-proto/myproject"));
-
         processBuilder.redirectErrorStream(true);
     }
 

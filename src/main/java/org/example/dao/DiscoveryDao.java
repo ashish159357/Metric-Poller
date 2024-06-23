@@ -5,11 +5,11 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Tuple;
 import org.example.config.DataBaseConfig;
-import org.example.enums.DiscoveryEnum;
 
 public class DiscoveryDao extends DaoAbstract {
 
     private static DiscoveryDao discoveryDaoInstance = null;
+    private String insertQuery = "INSERT INTO discovery (credential_id,type,hostname,protocol) VALUES ($1,$2,$3,$4)";
 
     private DiscoveryDao(){
     }
@@ -29,7 +29,7 @@ public class DiscoveryDao extends DaoAbstract {
         String type = data.getString("type");
         String hostname = data.getString("hostname");
         String protocol = data.getString("protocol");
-        insert(DiscoveryEnum.INSERT_DISCOVERY.getQuery(),message, Tuple.of(credentialId,type,host,protocol));
+        insert(insertQuery,message, Tuple.of(credentialId,type,host,protocol));
     }
 
     @Override

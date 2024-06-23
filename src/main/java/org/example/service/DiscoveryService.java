@@ -23,10 +23,13 @@ public class DiscoveryService {
     public void createDiscovery(JsonObject discovery, RoutingContext routingContext){
         discovery.put(Constants.DAO_KEY,Constants.DISCOVERY_DAO_NAME);
 
+        // request to insert discovery in database
         vertx.eventBus().request(EventBusAddresses.DATABASE_INSERT,discovery,reply -> {
             if(reply.succeeded()){
 
                 discovery.put(Constants.DAO_KEY,Constants.CREDENTIAL_PROFILE_DAO_NAME);
+
+                // request to get credential info
                 vertx.eventBus().request(EventBusAddresses.DATABASE_SELECT_CREDENTIALPROIFILE, discovery, reply2 -> {
                     if (reply2.succeeded()) {
                         JsonObject credentialProfile = (JsonObject) reply2.result().body();
@@ -47,9 +50,9 @@ public class DiscoveryService {
                     }
                 });
 
-                routingContext.response().setStatusCode(500).end("Done");
+                routingContext.response().setStatusCode(500).end("Discovery Done Successfully");
             }else {
-                routingContext.response().setStatusCode(500).end("fail");
+                routingContext.response().setStatusCode(500).end("Discovery Failed");
             }
         });
 
@@ -67,6 +70,8 @@ public class DiscoveryService {
 
             // Send JSON to Go application
             sendData(process,credentialProfile,discovery);
+
+            // Read JSON from GO
             jsonObject = readResponse(process);
 
             // waiting for process to complete

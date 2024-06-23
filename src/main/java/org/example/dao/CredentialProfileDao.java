@@ -7,11 +7,11 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import org.example.config.DataBaseConfig;
-import org.example.enums.CredentialProfileEnum;
 
 public class CredentialProfileDao extends DaoAbstract {
 
-//    private static PgPool client;
+    private String insertQuery = "INSERT INTO credential_profile (credentialProfileName,username,password) VALUES ($1,$2,$3)";
+    private String selectQuery = "SELECT * from credential_profile where credentialprofileid=$1";
 
     private static CredentialProfileDao credentialProfileDaoInstance = null;
 
@@ -34,7 +34,7 @@ public class CredentialProfileDao extends DaoAbstract {
 
         String password = data.getString("password");
 
-        insert(CredentialProfileEnum.INSERT_CREDENTIAL_PROFILE.getQuery(),message,Tuple.of(credentialProfileName,username,password));
+        insert(insertQuery,message,Tuple.of(credentialProfileName,username,password));
     }
 
 
@@ -42,7 +42,7 @@ public class CredentialProfileDao extends DaoAbstract {
 
         long id = Long.parseLong(data.getString("credentialId"));
 
-        client.preparedQuery(CredentialProfileEnum.SELECT_CREDENTIAL_PROFILE.getQuery())
+        client.preparedQuery(selectQuery)
 
                 .execute(Tuple.of(id), res -> {
 
