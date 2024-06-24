@@ -3,6 +3,7 @@ package org.example.dao;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.Tuple;
 
 public abstract class DaoAbstract {
@@ -16,10 +17,15 @@ public abstract class DaoAbstract {
         client.preparedQuery(query)
                 .execute(tuple, ar -> {
                     if (ar.succeeded()) {
-                        message.reply("Data inserted successfully");
+                        JsonObject jsonObject = new JsonObject();
+                        for (Row row : ar.result()) {
+                                int generatedId = (int) row.getValue(row.getColumnName(0));
+                                jsonObject.put("generatedId",generatedId);
+                        }
+
+                        message.reply(jsonObject);
                     } else {
-                        System.out.println("query : " + query);
-                        System.out.println("tuple : " + tuple);
+                        System.out.println(ar.cause().getMessage());
                         message.fail(500, ar.cause().getMessage());
                     }
                 });

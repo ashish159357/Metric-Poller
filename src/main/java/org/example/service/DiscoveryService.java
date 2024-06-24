@@ -14,7 +14,8 @@ import java.util.concurrent.TimeUnit;
 public class DiscoveryService {
 
     private Vertx vertx;
-
+    private final long schedulerPeriod = 5;
+    private boolean monitorStatus = false;
 
     public DiscoveryService(Vertx vertx){
         this.vertx = vertx;
@@ -27,16 +28,20 @@ public class DiscoveryService {
         // request to insert discovery in database
         vertx.eventBus().request(EventBusAddresses.DATABASE_INSERT,discovery,reply -> {
             if(reply.succeeded()){
+                JsonObject generatedId = (JsonObject) reply.result().body();
 
                 discovery.put(Constants.DAO_KEY,Constants.CREDENTIAL_PROFILE_DAO_NAME);
 
                 // request to get credential info
                 vertx.eventBus().request(EventBusAddresses.DATABASE_SELECT_CREDENTIALPROIFILE, discovery, reply2 -> {
                     if (reply2.succeeded()) {
-                        JsonObject credentialProfile = (JsonObject) reply2.result().body();
+                        JsonObject device = (JsonObject) reply2.result().body();
+                        device.put("discoveryId",generatedId.getString("generatedId"));
 
+                        // Scheduling Metric Poller for 5 seconds
                         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-                        scheduler.scheduleAtFixedRate(new MetricPoller(credentialProfile,discovery), 1, 5, TimeUnit.SECONDS);
+                        scheduler.scheduleAtFixedRate(new MetricPoller(device,discovery,schedulerPeriod,vertx,monitorStatus), 1, schedulerPeriod, TimeUnit.SECONDS);
+
                     } else {
                         System.out.println("Unable to get the Credential Info to start discovery");
                     }
@@ -47,5 +52,9 @@ public class DiscoveryService {
                 routingContext.response().setStatusCode(500).end("Discovery Failed");
             }
         });
+    }
+
+    public void getIpRange(){
+
     }
 }
