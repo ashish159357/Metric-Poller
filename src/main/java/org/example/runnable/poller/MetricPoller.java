@@ -2,32 +2,32 @@ package org.example.runnable.poller;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.example.config.ApplicationConfig;
 import org.example.config.ProcessBuilderConfig;
 import org.example.constant.Constants;
 import org.example.constant.EventBusAddresses;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 
 public class MetricPoller implements Runnable{
 
-    private JsonObject device;
+    private List<JsonObject> devices;
     private JsonObject discovery;
     private Process process;
-    private long metricPollerTimeout = 4;
-    private boolean monitorStatus;
+    private long metricPollerTimeout = ApplicationConfig.METRIC_POLLER_TIMEOUT.value;
     private Vertx vertx;
 
-    public MetricPoller(JsonObject device, JsonObject discovery, long schedulerPeriod, Vertx vertx,boolean monitorStatus){
-        this.device = device;
+    public MetricPoller(List<JsonObject> device, JsonObject discovery, long schedulerPeriod, Vertx vertx){
+        this.devices = device;
         this.discovery = discovery;
         this.vertx = vertx;
-        this.monitorStatus = monitorStatus;
         if(schedulerPeriod < metricPollerTimeout){
             throw new RuntimeException("Poller Scheduler Period should always more than Metric Poller Timeout");
         }
@@ -35,10 +35,11 @@ public class MetricPoller implements Runnable{
 
     @Override
     public void run() {
-        startDiscovery(device,discovery);
+        startDiscovery(devices,discovery);
     }
 
-    public JsonObject startDiscovery(JsonObject device,JsonObject discovery){
+
+    public JsonObject startDiscovery(List<JsonObject> devices,JsonObject discovery){
         JsonObject jsonObject = null;
         try {
             String command = "go run /home/ashish/a4h-personal/Prototype/go-proto/myproject/main.go";
@@ -47,8 +48,11 @@ public class MetricPoller implements Runnable{
             // Start the process
             process = processBuilderConfig.getAndStartProcess();
 
+            JsonObject listOfdevices = new JsonObject();
+            listOfdevices.put("devices",devices);
+
             // Send JSON to Go application
-            sendData(process,device,discovery);
+            sendData(process,listOfdevices,discovery);
 
             // Read JSON from GO
             jsonObject = readResponse(process);
@@ -74,35 +78,43 @@ public class MetricPoller implements Runnable{
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         try {
 
-                Boolean status = metricPollerTimeout(reader,metricPollerTimeout,TimeUnit.SECONDS);
+                Boolean responseFromGo = metricPollerTimeout(reader,metricPollerTimeout,TimeUnit.SECONDS);
 
-                if(status == true){
-                    String cpu = reader.readLine();
-                    String memory = reader.readLine();
-                    String disk = reader.readLine();
+                if(responseFromGo == true){
+                    String line;
+                    List<JsonObject> listOfMetrics = new ArrayList<>();
+                    while ((line = reader.readLine()) != null) {
+                        JsonObject object = new JsonObject(line);
+                        object.put("timestamp",formattedTimestamp);
 
-                    // creating jsonobject
-                    jsonObject.put("cpu",cpu);
-                    jsonObject.put("memory",memory);
-                    jsonObject.put("disk",disk);
-                    System.out.println(formattedTimestamp + " -> " + "cpu = " + cpu + " , " + "memory = " + memory + " , " + "disk = " + disk);
+                        updateMonitor(object);
 
-                    if(monitorStatus == false){
-                        device.put(Constants.DAO_KEY,Constants.MONITOR_DAO_NAME);
-                        vertx.eventBus().send(EventBusAddresses.DATABASE_INSERT,device);
-                        monitorStatus = true;
+                        listOfMetrics.add(object);
+                        System.out.println(object);
                     }
+                    System.out.println("------------------------------------------------");
                 }
                 else {
                     process.destroyForcibly();
-                    System.out.println("Status : " + status);
+                    System.out.println("Not able poll metric within given interval : " + metricPollerTimeout + " seconds");
                 }
-
-                jsonObject.put("status",status);
+                jsonObject.put("status",responseFromGo);
                 return jsonObject;
         } catch (IOException  e) {
             throw new RuntimeException(e);
         }
+    }
+
+
+    public void updateMonitor(JsonObject object){
+        JsonObject updateMonitorDetails = new JsonObject();
+
+        updateMonitorDetails.put(Constants.DAO_KEY,Constants.MONITOR_DAO_NAME);
+        updateMonitorDetails.put("monitorId",object.getString("monitorId"));
+
+        updateMonitorDetails.put("status",object.getString("status"));
+        vertx.eventBus().send(EventBusAddresses.DATABASE_UPDATE,updateMonitorDetails);
+
     }
 
 
@@ -112,7 +124,7 @@ public class MetricPoller implements Runnable{
         OutputStream os = process.getOutputStream();
         device.put("ip",discovery.getString("ip"));
         try {
-            os.write(device.toString().getBytes());
+            os.write(device.getString("devices").getBytes());
             os.flush();
             os.close();
         } catch (IOException e) {

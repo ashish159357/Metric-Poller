@@ -69,4 +69,9 @@ public class CredentialProfileDao extends DaoAbstract {
 
                 });
     }
+
+    @Override
+    public void updateData(JsonObject data, Message<Object> message) {
+
+    }
 }

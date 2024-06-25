@@ -19,23 +19,35 @@ public class DatabaseVerticle extends AbstractVerticle {
     public void start(Promise<Void> startPromise) {
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_INSERT,this::insertData);
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_SELECT_CREDENTIALPROIFILE, this::getdata);
+        vertx.eventBus().consumer(EventBusAddresses.DATABASE_UPDATE,this::updateData);
         startPromise.complete();
+    }
+
+    private void updateData(Message<Object> message) {
+        JsonObject data = (JsonObject) message.body();
+        DaoAbstract daoAbstract = getDaoInstance(data);
+        daoAbstract.updateData(data,message);
     }
 
 
     public void insertData(Message<Object> message){
         JsonObject data = (JsonObject) message.body();
-        DaoAbstract daoInterface = null;
+        DaoAbstract daoAbstract = getDaoInstance(data);
+        daoAbstract.insertData(data, message);
+    }
+
+    public DaoAbstract getDaoInstance(JsonObject data){
+        DaoAbstract daoAbstract = null;
 
         if(data.getString(Constants.DAO_KEY) == Constants.CREDENTIAL_PROFILE_DAO_NAME){
-            daoInterface = CredentialProfileDao.getInstance(vertx);
+            daoAbstract = CredentialProfileDao.getInstance(vertx);
         } else if (data.getString(Constants.DAO_KEY) == Constants.DISCOVERY_DAO_NAME) {
-            daoInterface = DiscoveryDao.getInstance(vertx);
+            daoAbstract = DiscoveryDao.getInstance(vertx);
         } else if (data.getString(Constants.DAO_KEY) == Constants.MONITOR_DAO_NAME) {
-            daoInterface = MonitorDao.getInstance(vertx);
+            daoAbstract = MonitorDao.getInstance(vertx);
         }
 
-        daoInterface.insertData(data, message);
+        return daoAbstract;
     }
 
 

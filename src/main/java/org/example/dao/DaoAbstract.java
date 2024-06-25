@@ -12,6 +12,7 @@ public abstract class DaoAbstract {
 
     public abstract void insertData(JsonObject data, Message<Object> message);
     public abstract void selectData(JsonObject data, Message<Object> message);
+    public abstract void updateData(JsonObject data, Message<Object> message);
 
     public void insert(String query,Message<Object> message,Tuple tuple){
         client.preparedQuery(query)
@@ -24,6 +25,18 @@ public abstract class DaoAbstract {
                         }
 
                         message.reply(jsonObject);
+                    } else {
+                        System.out.println(ar.cause().getMessage());
+                        message.fail(500, ar.cause().getMessage());
+                    }
+                });
+    }
+
+    public void update(String query,Message<Object> message,Tuple tuple){
+        client.preparedQuery(query)
+                .execute(tuple, ar -> {
+                    if (ar.succeeded()) {
+                        message.reply("Update Success");
                     } else {
                         System.out.println(ar.cause().getMessage());
                         message.fail(500, ar.cause().getMessage());

@@ -4,7 +4,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import org.example.constant.Constants;
 import org.example.service.DiscoveryService;
 
 public class DiscoveryController {

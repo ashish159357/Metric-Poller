@@ -37,4 +37,9 @@ public class DiscoveryDao extends DaoAbstract {
     public void selectData(JsonObject data, Message<Object> message) {
 
     }
+
+    @Override
+    public void updateData(JsonObject data, Message<Object> message) {
+
+    }
 }
