@@ -1,10 +1,10 @@
-package org.example.vertical.database;
+package org.example.vertical;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
+import lombok.extern.slf4j.Slf4j;
 import org.example.config.DataBaseConfig;
 import org.example.constant.Constants;
 import org.example.constant.EventBusAddresses;
@@ -13,10 +13,16 @@ import org.example.dao.DaoAbstract;
 import org.example.dao.DiscoveryDao;
 import org.example.dao.MonitorDao;
 
+@Slf4j
 public class DatabaseVerticle extends AbstractVerticle {
+
+    String eventLoopThreadPrefix = "vert.x-eventloop-thread";
 
     @Override
     public void start(Promise<Void> startPromise) {
+
+        Thread.currentThread().setName(eventLoopThreadPrefix + "-" + "DatabaseVerticle");
+
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_INSERT,this::insertData);
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_SELECT_CREDENTIALPROIFILE, this::getdata);
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_UPDATE,this::updateData);
@@ -68,7 +74,7 @@ public class DatabaseVerticle extends AbstractVerticle {
 
     @Override
     public void stop() {
-        DataBaseConfig.getClient(Vertx.vertx()).close();
+        DataBaseConfig.getClient(vertx).close();
     }
 }
 
