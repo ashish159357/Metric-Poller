@@ -8,7 +8,6 @@ import org.example.constant.Constants;
 import org.example.constant.EventBusAddresses;
 import org.example.runnable.poller.MetricPoller;
 import org.example.utils.IpRangeGenerator;
-
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +42,7 @@ public class DiscoveryService {
                 discovery.put(Constants.DAO_KEY,Constants.CREDENTIAL_PROFILE_DAO_NAME);
 
                 // request to get credential info
-                vertx.eventBus().request(EventBusAddresses.DATABASE_SELECT_CREDENTIALPROIFILE, discovery, reply2 -> {
+                vertx.eventBus().request(EventBusAddresses.DATABASE_SELECT_CREDENTIAL_PROIFILE, discovery, reply2 -> {
                     if (reply2.succeeded()) {
                         JsonObject device = (JsonObject) reply2.result().body();
                         device.put("discoveryId",discoveryId);

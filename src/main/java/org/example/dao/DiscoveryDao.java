@@ -1,5 +1,6 @@
 package org.example.dao;
 
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
@@ -23,23 +24,21 @@ public class DiscoveryDao extends DaoAbstract {
     }
 
     @Override
-    public void insertData(JsonObject data, Message<Object> message) {
+    public void insertData(JsonObject data,Promise promise) {
         String host = data.getString("ip");
         String discoveryName = data.getString("discoveryName");
         long credentialId = Long.parseLong(data.getString("credentialId"));
         String type = data.getString("type");
         String hostname = data.getString("hostname");
         String protocol = data.getString("protocol");
-        insert(insertQuery,message, Tuple.of(discoveryName,credentialId,type,host,protocol));
+        insert(insertQuery, Tuple.of(discoveryName,credentialId,type,host,protocol),promise);
     }
 
     @Override
-    public void selectData(JsonObject data, Message<Object> message) {
+    public void selectData(JsonObject data,Promise promise) {
 
     }
 
     @Override
-    public void updateData(JsonObject data, Message<Object> message) {
-
-    }
+    public void updateData(JsonObject data) {}
 }

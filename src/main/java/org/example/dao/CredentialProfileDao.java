@@ -1,22 +1,20 @@
 package org.example.dao;
 
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import org.example.config.DataBaseConfig;
 
 public class CredentialProfileDao extends DaoAbstract {
 
-    private String insertQuery = "INSERT INTO credential_profile (credentialProfileName,username,password) VALUES ($1,$2,$3)";
+    private String insertQuery = "INSERT INTO credential_profile (credentialProfileName,username,password) VALUES ($1,$2,$3) returning credentialprofileid";
     private String selectQuery = "SELECT * from credential_profile where credentialprofileid=$1";
 
     private static CredentialProfileDao credentialProfileDaoInstance = null;
 
-    private CredentialProfileDao(){
-    }
+    private CredentialProfileDao(){}
 
     public static synchronized CredentialProfileDao getInstance(Vertx vertx){
         if(credentialProfileDaoInstance == null){
@@ -26,52 +24,21 @@ public class CredentialProfileDao extends DaoAbstract {
         return credentialProfileDaoInstance;
     }
 
-    public void insertData(JsonObject data, Message<Object> message) {
+    public void insertData(JsonObject data, Promise promise) {
 
         String credentialProfileName = data.getString("credentialProfileName");
-
         String username = data.getString("username");
-
         String password = data.getString("password");
-
-        insert(insertQuery,message,Tuple.of(credentialProfileName,username,password));
+        insert(insertQuery,Tuple.of(credentialProfileName,username,password),promise);
     }
 
 
-    public void selectData(JsonObject data, Message<Object> message) {
+    public void selectData(JsonObject data,Promise promise) {
 
         long id = Long.parseLong(data.getString("credentialId"));
-
-        client.preparedQuery(selectQuery)
-
-                .execute(Tuple.of(id), res -> {
-
-                    if (res.succeeded()) {
-
-                        RowSet<Row> resultSet = res.result();
-
-                        JsonObject jsonObject = new JsonObject();
-
-                        for (Row row : resultSet) {
-
-                            String username = row.getString("username");
-                            String password = row.getString("password");
-
-                            jsonObject.put("username",username)
-                                    .put("password",password);
-                        }
-
-                        message.reply(jsonObject);
-
-                    } else {
-                        res.cause().printStackTrace();
-                    }
-
-                });
+        select(selectQuery,Tuple.of(id),promise);
     }
 
     @Override
-    public void updateData(JsonObject data, Message<Object> message) {
-
-    }
+    public void updateData(JsonObject data) {}
 }

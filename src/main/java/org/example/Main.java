@@ -13,7 +13,9 @@ import java.util.Set;
 public class Main {
 
     public static void main(String[] args) {
-        Vertx vertx = Vertx.vertx();
+
+        Vertx vertx = Vertx.vertx(new VertxOptions().setWorkerPoolSize(3));
+
         String packageName = "org.example.vertical";
 
         // Deploy the verticles

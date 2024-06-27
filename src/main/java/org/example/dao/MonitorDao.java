@@ -1,5 +1,6 @@
 package org.example.dao;
 
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
@@ -25,7 +26,7 @@ public class MonitorDao extends DaoAbstract{
     }
 
     @Override
-    public void insertData(JsonObject data, Message<Object> message) {
+    public void insertData(JsonObject data, Promise promise) {
         long discoveryId = Long.parseLong(data.getString("discoveryId"));
         String hostname = data.getString("ip");
         String protocol = data.getString("protocol");
@@ -33,18 +34,18 @@ public class MonitorDao extends DaoAbstract{
         String password = data.getString("password");
         String status = "fail";
 
-        insert(insertSql,message, Tuple.of(discoveryId,hostname,protocol,username,password,status));
+        insert(insertSql, Tuple.of(discoveryId,hostname,protocol,username,password,status),promise);
     }
 
     @Override
-    public void selectData(JsonObject data, Message<Object> message) {
+    public void selectData(JsonObject data,Promise promise) {
 
     }
 
     @Override
-    public void updateData(JsonObject data, Message<Object> message) {
+    public void updateData(JsonObject data) {
         String status = data.getString("status");
         long monitorId = Long.parseLong(data.getString("monitorId"));
-        update(updatesql,message,Tuple.of(status,monitorId));
+        update(updatesql,Tuple.of(status,monitorId));
     }
 }

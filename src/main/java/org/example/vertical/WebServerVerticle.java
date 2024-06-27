@@ -7,6 +7,7 @@ import io.vertx.ext.web.handler.BodyHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.example.controller.CredentialProfileController;
 import org.example.controller.DiscoveryController;
+import org.example.service.CredentialProfileService;
 
 @Slf4j
 public class WebServerVerticle extends AbstractVerticle {
@@ -29,7 +30,7 @@ public class WebServerVerticle extends AbstractVerticle {
 
         // Register controller routes
         new DiscoveryController(router, vertx);
-        new CredentialProfileController(router, vertx);
+        new CredentialProfileController(router, new CredentialProfileService(vertx));
 
         // Create the HTTP server and pass the "accept" method to the request handler
         vertx.createHttpServer()
