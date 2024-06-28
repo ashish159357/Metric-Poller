@@ -1,6 +1,5 @@
 package org.example.controller;
 
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -17,7 +16,6 @@ public class CredentialProfileController {
 
     public CredentialProfileController(Router router, CredentialProfileService credentialProfileService) {
         this.credentialProfileService = credentialProfileService;
-        router.route().handler(BodyHandler.create()); // Ensure the body handler is added to parse request bodies
         router.post(CREATE_CREDENTIAL_PROFILE).handler(this::createCredentialProfile);
     }
 

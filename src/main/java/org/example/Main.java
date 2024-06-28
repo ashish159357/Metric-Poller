@@ -15,7 +15,6 @@ public class Main {
     public static void main(String[] args) {
 
         Vertx vertx = Vertx.vertx(new VertxOptions().setWorkerPoolSize(3));
-
         String packageName = "org.example.vertical";
 
         // Deploy the verticles
@@ -49,7 +48,6 @@ public class Main {
 
     private static Future<Void> deployVerticle(Vertx vertx, Class<? extends Verticle> verticleClass, DeploymentOptions options,List<String> deployedVerticles) {
         Promise<Void> promise = Promise.promise();
-
         try {
             vertx.deployVerticle(verticleClass.getName(),options, res -> {
                 if (res.succeeded()) {
@@ -73,6 +71,7 @@ public class Main {
         List<Future> futures = new ArrayList<>();
         for (String deploymentId : deploymentIds) {
             Promise<Void> promise = Promise.promise();
+            futures.add(promise.future());
             vertx.undeploy(deploymentId, res -> {
                 if (res.succeeded()) {
                     log.info("Verticle {} undeployed successfully.", deploymentId);
@@ -82,7 +81,6 @@ public class Main {
                     promise.fail(res.cause());
                 }
             });
-            futures.add(promise.future());
         }
         return CompositeFuture.all(futures).mapEmpty();
     }

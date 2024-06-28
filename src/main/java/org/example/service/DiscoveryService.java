@@ -1,5 +1,7 @@
 package org.example.service;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
@@ -22,7 +24,7 @@ public class DiscoveryService {
     private Vertx vertx;
     private final long schedulerPeriod = ApplicationConfig.SCHEDULER_PERIOD.value;
     private MonitorService monitorService;
-    private ConcurrentHashMap<String,ScheduledExecutorService> metricPollerScheduler = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ScheduledExecutorService> metricPollerScheduler = new ConcurrentHashMap<>();
 
     public DiscoveryService(Vertx vertx){
         this.vertx = vertx;
@@ -30,7 +32,9 @@ public class DiscoveryService {
     }
 
 
-    public void createDiscovery(JsonObject discovery, RoutingContext routingContext){
+    public Future<String> createDiscovery(JsonObject discovery){
+        Promise<String> promise = Promise.promise();
+
         discovery.put(Constants.DAO_KEY,Constants.DISCOVERY_DAO_NAME);
 
         // request to insert discovery in database
@@ -62,11 +66,13 @@ public class DiscoveryService {
                     }
                 });
 
-                routingContext.response().setStatusCode(500).end("Discovery Created Successfully");
+                promise.complete("Discovery Created Successfully");
             }else {
-                routingContext.response().setStatusCode(500).end("Unable to Create Discovery");
+                promise.fail("Unable to Create Discovery");
             }
         });
+
+        return promise.future();
     }
 
 

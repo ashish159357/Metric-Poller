@@ -17,12 +17,10 @@ import org.example.dao.MonitorDao;
 @Slf4j
 public class DatabaseVerticle extends AbstractVerticle {
 
-    private static final String EVENT_LOOP_THREAD_PREFIX = "vert.x-eventloop-thread-DatabaseVerticle";
-
-
     @Override
     public void start(Promise<Void> startPromise) {
-        Thread.currentThread().setName(EVENT_LOOP_THREAD_PREFIX);
+        Thread.currentThread().setName(Thread.currentThread().getName() + "-" + "DatabaseVerticle");
+
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_INSERT, this::insertData);
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_SELECT_CREDENTIAL_PROIFILE, this::selectData);
         vertx.eventBus().consumer(EventBusAddresses.DATABASE_UPDATE, this::updateData);

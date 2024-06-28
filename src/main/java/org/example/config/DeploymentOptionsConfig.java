@@ -15,8 +15,8 @@ public class DeploymentOptionsConfig {
 
     // Static initializer to configure deployment options
     static {
-      //  verticleOptionsMap.put(DatabaseVerticle.class, new DeploymentOptions().setInstances(2));
-      //  verticleOptionsMap.put(WebServerVerticle.class, new DeploymentOptions().setInstances(2));
+        verticleOptionsMap.put(DatabaseVerticle.class, new DeploymentOptions());
+        verticleOptionsMap.put(WebServerVerticle.class, new DeploymentOptions().setInstances(2));
     }
 
     // Method to get deployment options for a specific Verticle class
