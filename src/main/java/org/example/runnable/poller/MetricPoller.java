@@ -1,49 +1,43 @@
 package org.example.runnable.poller;
 
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.example.config.ApplicationConfig;
 import org.example.config.ProcessBuilderConfig;
-import org.example.constant.Constants;
-import org.example.constant.EventBusAddresses;
+import org.example.utils.DateUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
-public class MetricPoller implements Runnable{
+public class MetricPoller{
 
     private List<JsonObject> devices;
     private JsonObject discovery;
     private Process process;
     private long metricPollerTimeout = ApplicationConfig.METRIC_POLLER_TIMEOUT.value;
-    private Vertx vertx;
+    private ProcessBuilderConfig processBuilderConfig;
 
-    public MetricPoller(List<JsonObject> device, JsonObject discovery, long schedulerPeriod, Vertx vertx){
+    public MetricPoller(List<JsonObject> device, JsonObject discovery, long schedulerPeriod){
         this.devices = device;
         this.discovery = discovery;
-        this.vertx = vertx;
+        this.processBuilderConfig = new ProcessBuilderConfig("go run /home/ashish/a4h-personal/Prototype/go-proto/myproject/main.go");
         if(schedulerPeriod < metricPollerTimeout){
             throw new RuntimeException("Poller Scheduler Period should always more than Metric Poller Timeout");
         }
     }
 
-    @Override
-    public void run() {
-        startDiscovery(devices,discovery);
+
+    public List<JsonObject> run() {
+        return startDiscovery(devices,discovery);
     }
 
 
-    public JsonObject startDiscovery(List<JsonObject> devices,JsonObject discovery){
-        JsonObject jsonObject = null;
+    public List<JsonObject> startDiscovery(List<JsonObject> devices,JsonObject discovery){
+        List<JsonObject> respone = null;
         try {
-            String command = "go run /home/ashish/a4h-personal/Prototype/go-proto/myproject/main.go";
-            ProcessBuilderConfig processBuilderConfig = new ProcessBuilderConfig(command);
 
             // Start the process
             process = processBuilderConfig.getAndStartProcess();
@@ -55,67 +49,53 @@ public class MetricPoller implements Runnable{
             sendData(process,listOfdevices,discovery);
 
             // Read JSON from GO
-            jsonObject = readResponse(process);
+            respone = readResponse(process);
 
             // waiting for process to complete
-            process.waitFor();
+            process.waitFor(60,TimeUnit.SECONDS);
         } catch (Exception e) {
             System.out.println("Unable to Start Discovery : " + e.getMessage());
         }
-        return jsonObject;
+        return respone;
     }
 
 
-    public JsonObject readResponse(Process process){
-        JsonObject jsonObject = new JsonObject();
-
-        // current timestamp
-        LocalDateTime timestamp = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String formattedTimestamp = timestamp.format(formatter);
+    public List<JsonObject> readResponse(Process process){
+        List<JsonObject> listOfMetrics = new ArrayList<>();
 
         // Read the output from Go application (if any)
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         try {
+//                Boolean responseFromGo = metricPollerTimeout(reader,metricPollerTimeout,TimeUnit.SECONDS);
 
-                Boolean responseFromGo = metricPollerTimeout(reader,metricPollerTimeout,TimeUnit.SECONDS);
-
-                if(responseFromGo == true){
                     String line;
-                    List<JsonObject> listOfMetrics = new ArrayList<>();
                     while ((line = reader.readLine()) != null) {
                         JsonObject object = new JsonObject(line);
-                        object.put("timestamp",formattedTimestamp);
-
-                        updateMonitor(object);
+                        object.put("timestamp", DateUtils.getCurrentTimeStamp());
 
                         listOfMetrics.add(object);
                         System.out.println(object);
                     }
                     System.out.println("------------------------------------------------");
-                }
-                else {
-                    process.destroyForcibly();
-                    System.out.println("Not able poll metric within given interval : " + metricPollerTimeout + " seconds");
-                }
-                jsonObject.put("status",responseFromGo);
-                return jsonObject;
+
         } catch (IOException  e) {
             throw new RuntimeException(e);
         }
+
+        return listOfMetrics;
     }
 
 
-    public void updateMonitor(JsonObject object){
-        JsonObject updateMonitorDetails = new JsonObject();
-
-        updateMonitorDetails.put(Constants.DAO_KEY,Constants.MONITOR_DAO_NAME);
-        updateMonitorDetails.put("monitorId",object.getString("monitorId"));
-
-        updateMonitorDetails.put("status",object.getString("status"));
-        vertx.eventBus().send(EventBusAddresses.DATABASE_UPDATE,updateMonitorDetails);
-
-    }
+//    public void updateMonitor(JsonObject object){
+//        JsonObject updateMonitorDetails = new JsonObject();
+//
+//        updateMonitorDetails.put(Constants.DAO_KEY,Constants.MONITOR_DAO_NAME);
+//        updateMonitorDetails.put("monitorId",object.getString("monitorId"));
+//
+//        updateMonitorDetails.put("status",object.getString("status"));
+//        vertx.eventBus().send(EventBusAddresses.DATABASE_UPDATE,updateMonitorDetails);
+//
+//    }
 
 
     public void sendData(Process process, JsonObject device, JsonObject discovery){
@@ -164,6 +144,14 @@ public class MetricPoller implements Runnable{
             executor.shutdownNow(); // Properly shut down the executor
         }
         return flag;
+    }
+
+    public List<JsonObject> getDevices() {
+        return devices;
+    }
+
+    public void setDevices(List<JsonObject> devices) {
+        this.devices = devices;
     }
 
 }

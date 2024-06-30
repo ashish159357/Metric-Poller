@@ -3,8 +3,8 @@ package org.example.service;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.RoutingContext;
 import org.example.config.ApplicationConfig;
 import org.example.constant.Constants;
 import org.example.constant.EventBusAddresses;
@@ -14,10 +14,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
 
 public class DiscoveryService {
 
@@ -54,23 +51,32 @@ public class DiscoveryService {
                         List<JsonObject> devices = getIpRanges(discovery,device);
 
                         // creating monitor with fail status
-                        monitorService.createMonitor(devices);
+                        monitorService.createMonitor(devices).onComplete(isMonitorCreatedPromise -> {
+                                if(isMonitorCreatedPromise.succeeded()){
+                                    vertx.executeBlocking(promiseBlocking -> {
+                                        MetricPoller metricPoller = new MetricPoller(devices,discovery,schedulerPeriod);
+                                        List<JsonObject> jsonObjects = startDiscovery(metricPoller);
+                                        metricPoller.setDevices(jsonObjects);
 
-                        // Scheduling Metric Poller for 5 seconds
-                        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-                        metricPollerScheduler.put(discoveryId,scheduler);
-                        scheduler.scheduleAtFixedRate(new MetricPoller(devices,discovery,schedulerPeriod,vertx), 1, schedulerPeriod, TimeUnit.SECONDS);
+                                        // Scheduling Metric Poller for 5 seconds
+                                        vertx.setPeriodic(2000,id -> {
+                                            vertx.executeBlocking(promise1 -> {
+                                                metricPoller.run();
+                                            });
+                                        });
+                                    },false);
+                                }
+                            });
+                        } else {
+                            System.out.println("Unable to get the Credential Info to start discovery");
+                        }
+                    });
 
-                    } else {
-                        System.out.println("Unable to get the Credential Info to start discovery");
-                    }
-                });
-
-                promise.complete("Discovery Created Successfully");
-            }else {
-                promise.fail("Unable to Create Discovery");
-            }
-        });
+                    promise.complete("Discovery Created Successfully");
+                }else {
+                    promise.fail("Unable to Create Discovery");
+                }
+            });
 
         return promise.future();
     }
@@ -93,5 +99,30 @@ public class DiscoveryService {
             }
         }
         return devices;
+    }
+
+
+    public List<JsonObject> startDiscovery(MetricPoller metricPoller){
+        List<JsonObject> metrics = metricPoller.run();
+        List<JsonObject> devices = metricPoller.getDevices();
+        List<String> monitorIds = new ArrayList<>();
+
+        // filter out all monitor ids having status success
+        List<JsonObject> filteredDevices = new ArrayList<>();
+        for(int i=0 ; i < metrics.size() ; i++){
+            if(!metrics.get(i).getString("status").equals("fail")){
+                monitorIds.add(metrics.get(i).getString("monitorId"));
+            }
+        }
+
+        // update monitor status in database
+        for(JsonObject device:devices){
+            if(monitorIds.contains(device.getString("monitorId"))){
+                filteredDevices.add(device);
+                device.put("status","success");
+                monitorService.updateMonitor(device);
+            }
+        }
+        return filteredDevices;
     }
 }
