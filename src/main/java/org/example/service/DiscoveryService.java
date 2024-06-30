@@ -54,7 +54,10 @@ public class DiscoveryService {
                         monitorService.createMonitor(devices).onComplete(isMonitorCreatedPromise -> {
                                 if(isMonitorCreatedPromise.succeeded()){
                                     vertx.executeBlocking(promiseBlocking -> {
+
                                         MetricPoller metricPoller = new MetricPoller(devices,discovery,schedulerPeriod);
+
+                                        // start discovery and return list successfully discovered devices
                                         List<JsonObject> jsonObjects = startDiscovery(metricPoller);
                                         metricPoller.setDevices(jsonObjects);
 
