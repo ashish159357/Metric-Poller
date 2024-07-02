@@ -3,8 +3,8 @@ package org.example.service;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import lombok.extern.slf4j.Slf4j;
 import org.example.config.ApplicationConfig;
 import org.example.constant.Constants;
 import org.example.constant.EventBusAddresses;
@@ -16,12 +16,14 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 
+@Slf4j
 public class DiscoveryService {
 
     private Vertx vertx;
     private final long schedulerPeriod = ApplicationConfig.SCHEDULER_PERIOD.value;
     private MonitorService monitorService;
     private ConcurrentHashMap<String, ScheduledExecutorService> metricPollerScheduler = new ConcurrentHashMap<>();
+    private long periodicId;
 
     public DiscoveryService(Vertx vertx){
         this.vertx = vertx;
@@ -35,16 +37,23 @@ public class DiscoveryService {
         discovery.put(Constants.DAO_KEY,Constants.DISCOVERY_DAO_NAME);
 
         // request to insert discovery in database
+        log.info("Request to create discovery .....");
         vertx.eventBus().request(EventBusAddresses.DATABASE_INSERT,discovery,reply -> {
             if(reply.succeeded()){
+                log.info("Successfully created discovery .....");
                 JsonObject discoveryIdKeyValue = (JsonObject) reply.result().body();
                 String discoveryId = discoveryIdKeyValue.getString("generatedId");
 
                 discovery.put(Constants.DAO_KEY,Constants.CREDENTIAL_PROFILE_DAO_NAME);
 
+
                 // request to get credential info
+                log.info("Request to get Credentials .....");
                 vertx.eventBus().request(EventBusAddresses.DATABASE_SELECT_CREDENTIAL_PROIFILE, discovery, reply2 -> {
                     if (reply2.succeeded()) {
+
+                        log.info("Successfully get Credentials .....");
+
                         JsonObject device = (JsonObject) reply2.result().body();
                         device.put("discoveryId",discoveryId);
 
@@ -52,26 +61,34 @@ public class DiscoveryService {
 
                         // creating monitor with fail status
                         monitorService.createMonitor(devices).onComplete(isMonitorCreatedPromise -> {
-                                if(isMonitorCreatedPromise.succeeded()){
+                            if(isMonitorCreatedPromise.succeeded()){
+
+                                    log.info("Using Worker Thread for discovery devices");
+
+                                    // Running in worker Thread
                                     vertx.executeBlocking(promiseBlocking -> {
 
-                                        MetricPoller metricPoller = new MetricPoller(devices,discovery,schedulerPeriod);
+                                        MetricPoller metricPoller = new MetricPoller(devices,discovery,schedulerPeriod,monitorService);
+
+                                        log.info("Starting Discovery .....");
 
                                         // start discovery and return list successfully discovered devices
                                         List<JsonObject> jsonObjects = startDiscovery(metricPoller);
                                         metricPoller.setDevices(jsonObjects);
 
                                         // Scheduling Metric Poller for 5 seconds
-                                        vertx.setPeriodic(2000,id -> {
+                                        periodicId = vertx.setPeriodic(2000,id -> {
                                             vertx.executeBlocking(promise1 -> {
                                                 metricPoller.run();
                                             });
                                         });
+
                                     },false);
+
                                 }
                             });
                         } else {
-                            System.out.println("Unable to get the Credential Info to start discovery");
+                            log.info("Unable to get the Credential Info to start discovery");
                         }
                     });
 
@@ -80,7 +97,6 @@ public class DiscoveryService {
                     promise.fail("Unable to Create Discovery");
                 }
             });
-
         return promise.future();
     }
 
@@ -111,7 +127,6 @@ public class DiscoveryService {
         List<String> monitorIds = new ArrayList<>();
 
         // filter out all monitor ids having status success
-        List<JsonObject> filteredDevices = new ArrayList<>();
         for(int i=0 ; i < metrics.size() ; i++){
             if(!metrics.get(i).getString("status").equals("fail")){
                 monitorIds.add(metrics.get(i).getString("monitorId"));
@@ -119,6 +134,7 @@ public class DiscoveryService {
         }
 
         // update monitor status in database
+        List<JsonObject> filteredDevices = new ArrayList<>();
         for(JsonObject device:devices){
             if(monitorIds.contains(device.getString("monitorId"))){
                 filteredDevices.add(device);

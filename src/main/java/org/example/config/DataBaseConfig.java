@@ -7,18 +7,27 @@ import io.vertx.sqlclient.PoolOptions;
 
 public class DataBaseConfig {
 
-    public static PgPool getClient(Vertx vertx){
-        PgConnectOptions connectOptions = new PgConnectOptions()
-                .setPort(5432)
-                .setHost("localhost")
-                .setDatabase("mydb")
-                .setUser("postgres")
-                .setPassword("root");
+    private static PgPool client;
 
-        PoolOptions poolOptions = new PoolOptions()
-                .setMaxSize(5);
+    public static PgPool getClient(Vertx vertx) {
+        if (client == null) {
+            synchronized (DataBaseConfig.class) {
+                if (client == null) {
+                    PgConnectOptions connectOptions = new PgConnectOptions()
+                            .setPort(5432)
+                            .setHost("localhost")
+                            .setDatabase("mydb")
+                            .setUser("postgres")
+                            .setPassword("root");
 
-        return PgPool.pool(vertx, connectOptions, poolOptions);
+                    PoolOptions poolOptions = new PoolOptions()
+                            .setMaxSize(5);
+
+                    client = PgPool.pool(vertx, connectOptions, poolOptions);
+                }
+            }
+        }
+        return client;
     }
 
 }

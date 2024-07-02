@@ -2,7 +2,6 @@ package org.example.dao;
 
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Tuple;
 import org.example.config.DataBaseConfig;

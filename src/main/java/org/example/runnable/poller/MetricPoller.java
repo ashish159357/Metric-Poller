@@ -1,8 +1,11 @@
 package org.example.runnable.poller;
 
+import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
+import lombok.extern.slf4j.Slf4j;
 import org.example.config.ApplicationConfig;
 import org.example.config.ProcessBuilderConfig;
+import org.example.service.MonitorService;
 import org.example.utils.DateUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
+@Slf4j
 public class MetricPoller{
 
     private List<JsonObject> devices;
@@ -19,8 +23,11 @@ public class MetricPoller{
     private Process process;
     private long metricPollerTimeout = ApplicationConfig.METRIC_POLLER_TIMEOUT.value;
     private ProcessBuilderConfig processBuilderConfig;
+    private MonitorService monitorService;
 
-    public MetricPoller(List<JsonObject> device, JsonObject discovery, long schedulerPeriod){
+
+    public MetricPoller(List<JsonObject> device, JsonObject discovery, long schedulerPeriod, MonitorService monitorService){
+        this.monitorService = monitorService;
         this.devices = device;
         this.discovery = discovery;
         this.processBuilderConfig = new ProcessBuilderConfig("go run /home/ashish/a4h-personal/Prototype/go-proto/myproject/main.go");
@@ -31,11 +38,11 @@ public class MetricPoller{
 
 
     public List<JsonObject> run() {
-        return startDiscovery(devices,discovery);
+        return startMonitor(devices,discovery);
     }
 
 
-    public List<JsonObject> startDiscovery(List<JsonObject> devices,JsonObject discovery){
+    public List<JsonObject> startMonitor(List<JsonObject> devices,JsonObject discovery){
         List<JsonObject> respone = null;
         try {
 
@@ -66,36 +73,23 @@ public class MetricPoller{
         // Read the output from Go application (if any)
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         try {
-//                Boolean responseFromGo = metricPollerTimeout(reader,metricPollerTimeout,TimeUnit.SECONDS);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                JsonObject object = new JsonObject(line);
+                object.put("timestamp", DateUtils.getCurrentTimeStamp());
 
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        JsonObject object = new JsonObject(line);
-                        object.put("timestamp", DateUtils.getCurrentTimeStamp());
-
-                        listOfMetrics.add(object);
-                        System.out.println(object);
-                    }
-                    System.out.println("------------------------------------------------");
-
+//                if(object.getString("status").equals("fail")){
+//                    removeFailedMonitorDevice(object.getString("monitorId"),process);
+//                }
+                listOfMetrics.add(object);
+                log.info(String.valueOf(object));
+            }
         } catch (IOException  e) {
             throw new RuntimeException(e);
         }
-
+        log.info("-----------------------------------------------------------");
         return listOfMetrics;
     }
-
-
-//    public void updateMonitor(JsonObject object){
-//        JsonObject updateMonitorDetails = new JsonObject();
-//
-//        updateMonitorDetails.put(Constants.DAO_KEY,Constants.MONITOR_DAO_NAME);
-//        updateMonitorDetails.put("monitorId",object.getString("monitorId"));
-//
-//        updateMonitorDetails.put("status",object.getString("status"));
-//        vertx.eventBus().send(EventBusAddresses.DATABASE_UPDATE,updateMonitorDetails);
-//
-//    }
 
 
     public void sendData(Process process, JsonObject device, JsonObject discovery){
@@ -113,45 +107,32 @@ public class MetricPoller{
     }
 
 
-    public boolean metricPollerTimeout(BufferedReader reader, long timeout, TimeUnit unit) throws IOException {
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+    public void removeFailedMonitorDevice(String monitorId, Process process){
 
-        Future<Boolean> future = executor.submit(() -> {
-            try {
-                while (!reader.ready()) {
-                    Thread.sleep(50); // Sleep for a short time to avoid busy waiting
-                }
-                return true; // Ready to read
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return false; // Handle interruption
+        // update monitor status in database
+        List<JsonObject> filteredDevices = new ArrayList<>();
+        for(JsonObject device:devices){
+            if(!device.getString("monitorId").equals(monitorId)){
+                filteredDevices.add(device);
             }
-        });
-
-        Boolean flag = false;
-        try {
-            flag = future.get(timeout, unit);
-        } catch (TimeoutException e) {
-            future.cancel(true); // Cancel the task
-        } catch (ExecutionException e) {
-            throw new IOException("Error while reading input", e.getCause());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Thread was interrupted", e);
-        } finally {
-            executor.shutdownNow(); // Properly shut down the executor
+            else {
+                device.put("status","fail");
+                monitorService.updateMonitor(device);
+            }
         }
-        return flag;
+        if(filteredDevices.size() == 0){
+            process.destroyForcibly();
+            log.info("Metric Poller Process is killed as No devices available to monitor");
+        }
+        setDevices(filteredDevices);
     }
 
     public List<JsonObject> getDevices() {
         return devices;
     }
 
+
     public void setDevices(List<JsonObject> devices) {
         this.devices = devices;
     }
-
 }
