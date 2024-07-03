@@ -22,7 +22,7 @@ public class DiscoveryService {
     private Vertx vertx;
     private final long schedulerPeriod = ApplicationConfig.SCHEDULER_PERIOD.value;
     private MonitorService monitorService;
-    private ConcurrentHashMap<String, ScheduledExecutorService> metricPollerScheduler = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Long> metricPollerScheduler = new ConcurrentHashMap<>();
     private long periodicId;
 
     public DiscoveryService(Vertx vertx){
@@ -82,6 +82,8 @@ public class DiscoveryService {
                                                 metricPoller.run();
                                             });
                                         });
+
+                                        metricPollerScheduler.put(discoveryId,periodicId);
 
                                     },false);
 
