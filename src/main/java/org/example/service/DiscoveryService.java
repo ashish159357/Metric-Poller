@@ -6,7 +6,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
-import org.example.config.ApplicationConfig;
 import org.example.constant.Constants;
 import org.example.constant.EventBusAddresses;
 import org.example.runnable.poller.MetricPoller;
@@ -21,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DiscoveryService {
 
     private Vertx vertx;
-    private final long schedulerPeriod = ApplicationConfig.SCHEDULER_PERIOD;
     private MonitorService monitorService;
     private ConcurrentHashMap<String, Long> metricPollerScheduler = new ConcurrentHashMap<>();
 
