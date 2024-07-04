@@ -51,7 +51,6 @@ public class MetricPoller{
         } catch (Exception e) {
             System.out.println("Unable to Start Discovery : " + e.getMessage());
         }
-
         return respone;
     }
 

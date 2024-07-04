@@ -1,24 +1,23 @@
 package org.example.vertical;
 
-import com.google.common.collect.Lists;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.Message;
 import lombok.extern.slf4j.Slf4j;
-import org.example.config.ApplicationConfig;
 import org.example.constant.EventBusAddresses;
 import org.example.runnable.poller.MetricPoller;
-import java.util.ArrayList;
+import org.example.utils.DateUtils;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 @Slf4j
 public class MetricPollerVerticle extends AbstractVerticle {
 
-    private List<List<JsonObject>> listOfBatchDevices;
-    private int batchSize = ApplicationConfig.METRIC_POLLER_BATCH_SIZE;
-    private List<JsonObject> devices = new ArrayList<>(batchSize);
+    private ConcurrentHashMap<Long,List<JsonObject>> longListConcurrentHashMap = new ConcurrentHashMap<>();
+    private long pollingTime = 3;
 
     public void start(Promise<Void> startPromise) throws Exception {
         Thread.currentThread().setName(Thread.currentThread().getName() + "-" + "MetricPollerVerticle");
@@ -26,9 +25,15 @@ public class MetricPollerVerticle extends AbstractVerticle {
         vertx.eventBus().consumer(EventBusAddresses.METRIC_POLLER, this::startPolling);
 
         vertx.setPeriodic(5000,id -> {
-            if(listOfBatchDevices != null){
-                for(List<JsonObject> batchDevices:listOfBatchDevices){
 
+            for(long key:longListConcurrentHashMap.keySet()){
+
+                if((key + pollingTime) <= DateUtils.getCurrentEpochValue()){
+                   List<JsonObject> batchDevices = longListConcurrentHashMap.get(key);
+                   longListConcurrentHashMap.remove(key);
+                   longListConcurrentHashMap.put(key + pollingTime,batchDevices);
+
+                    log.info("Metric poller start for -> " + key);
                     vertx.executeBlocking(promise -> {
                         try {
                             MetricPoller metricPoller = new MetricPoller();
@@ -44,19 +49,16 @@ public class MetricPollerVerticle extends AbstractVerticle {
                             log.error("Metric polling failed", res.cause());
                         }
                     });
+
                 }
             }
+
         });
     }
 
     private void startPolling(Message<Object> message) {
         List<JsonObject> devices = ((JsonArray) message.body()).getList();
-        this.devices.addAll(devices);
-        listOfBatchDevices = bacthingDevices(this.devices);
-        log.info("Number Batch Created : {}",listOfBatchDevices.size());
+        longListConcurrentHashMap.put(DateUtils.getCurrentEpochValue(),devices);
     }
 
-    private List<List<JsonObject>> bacthingDevices(List<JsonObject> originalList){
-        return Lists.partition(originalList, batchSize);
-    }
 }

@@ -12,4 +12,7 @@ public class DateUtils {
         return formattedTimestamp;
     }
 
+    public static Long getCurrentEpochValue(){
+        return System.currentTimeMillis() / 1000L;
+    }
 }
