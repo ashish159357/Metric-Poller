@@ -1,14 +1,8 @@
 package org.example.config;
 
-public enum ApplicationConfig {
-     SCHEDULER_PERIOD(7),
+public class ApplicationConfig {
 
-     //  metric poller should be less than scheduler period
-     METRIC_POLLER_TIMEOUT(6);
+     public static final Integer SCHEDULER_PERIOD = 2000;
+     public static final Integer METRIC_POLLER_BATCH_SIZE = 2;
 
-     public final Integer value;
-
-     private ApplicationConfig(Integer value){
-         this.value = value;
-     }
 }

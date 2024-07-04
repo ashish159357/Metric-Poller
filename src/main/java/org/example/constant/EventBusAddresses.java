@@ -4,4 +4,5 @@ public class EventBusAddresses {
     public static final String DATABASE_INSERT = "database.insert";
     public static final String DATABASE_SELECT_CREDENTIAL_PROIFILE = "database.select.credential.profile";
     public static final String DATABASE_UPDATE = "database.update";
+    public static final String METRIC_POLLER = "metric.poller";
 }

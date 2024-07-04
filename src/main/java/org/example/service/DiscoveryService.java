@@ -3,6 +3,7 @@ package org.example.service;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.example.config.ApplicationConfig;
@@ -14,16 +15,15 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
+
 
 @Slf4j
 public class DiscoveryService {
 
     private Vertx vertx;
-    private final long schedulerPeriod = ApplicationConfig.SCHEDULER_PERIOD.value;
+    private final long schedulerPeriod = ApplicationConfig.SCHEDULER_PERIOD;
     private MonitorService monitorService;
     private ConcurrentHashMap<String, Long> metricPollerScheduler = new ConcurrentHashMap<>();
-    private long periodicId;
 
     public DiscoveryService(Vertx vertx){
         this.vertx = vertx;
@@ -46,7 +46,6 @@ public class DiscoveryService {
 
                 discovery.put(Constants.DAO_KEY,Constants.CREDENTIAL_PROFILE_DAO_NAME);
 
-
                 // request to get credential info
                 log.info("Request to get Credentials .....");
                 vertx.eventBus().request(EventBusAddresses.DATABASE_SELECT_CREDENTIAL_PROIFILE, discovery, reply2 -> {
@@ -68,22 +67,14 @@ public class DiscoveryService {
                                     // Running in worker Thread
                                     vertx.executeBlocking(promiseBlocking -> {
 
-                                        MetricPoller metricPoller = new MetricPoller(devices,discovery,schedulerPeriod,monitorService);
+                                        MetricPoller metricPoller = new MetricPoller(devices);
 
                                         log.info("Starting Discovery .....");
 
                                         // start discovery and return list successfully discovered devices
                                         List<JsonObject> jsonObjects = startDiscovery(metricPoller);
-                                        metricPoller.setDevices(jsonObjects);
 
-                                        // Scheduling Metric Poller for 5 seconds
-                                        periodicId = vertx.setPeriodic(2000,id -> {
-                                            vertx.executeBlocking(promise1 -> {
-                                                metricPoller.run();
-                                            });
-                                        });
-
-                                        metricPollerScheduler.put(discoveryId,periodicId);
+                                        vertx.eventBus().send(EventBusAddresses.METRIC_POLLER, new JsonArray(jsonObjects));
 
                                     },false);
 

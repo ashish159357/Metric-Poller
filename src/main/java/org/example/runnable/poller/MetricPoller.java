@@ -1,11 +1,8 @@
 package org.example.runnable.poller;
 
-import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
-import org.example.config.ApplicationConfig;
 import org.example.config.ProcessBuilderConfig;
-import org.example.service.MonitorService;
 import org.example.utils.DateUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,59 +12,51 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
+
 @Slf4j
 public class MetricPoller{
 
     private List<JsonObject> devices;
-    private JsonObject discovery;
-    private Process process;
-    private long metricPollerTimeout = ApplicationConfig.METRIC_POLLER_TIMEOUT.value;
-    private ProcessBuilderConfig processBuilderConfig;
-    private MonitorService monitorService;
+    private final ProcessBuilderConfig processBuilderConfig = new ProcessBuilderConfig("go run /home/ashish/a4h-personal/Prototype/go-proto/myproject/main.go");
 
-
-    public MetricPoller(List<JsonObject> device, JsonObject discovery, long schedulerPeriod, MonitorService monitorService){
-        this.monitorService = monitorService;
+    public MetricPoller(List<JsonObject> device){
         this.devices = device;
-        this.discovery = discovery;
-        this.processBuilderConfig = new ProcessBuilderConfig("go run /home/ashish/a4h-personal/Prototype/go-proto/myproject/main.go");
-        if(schedulerPeriod < metricPollerTimeout){
-            throw new RuntimeException("Poller Scheduler Period should always more than Metric Poller Timeout");
-        }
     }
 
+    public MetricPoller(){}
 
     public List<JsonObject> run() {
-        return startMonitor(devices,discovery);
+        return startMonitor(devices);
     }
 
 
-    public List<JsonObject> startMonitor(List<JsonObject> devices,JsonObject discovery){
+    public List<JsonObject> startMonitor(List<JsonObject> devices){
         List<JsonObject> respone = null;
         try {
 
             // Start the process
-            process = processBuilderConfig.getAndStartProcess();
+            Process process = processBuilderConfig.getAndStartProcess();
 
             JsonObject listOfdevices = new JsonObject();
             listOfdevices.put("devices",devices);
 
             // Send JSON to Go application
-            sendData(process,listOfdevices,discovery);
+            String timestamp = sendData(process,devices);
 
             // Read JSON from GO
-            respone = readResponse(process);
+            respone = readResponse(process,timestamp);
 
             // waiting for process to complete
             process.waitFor(60,TimeUnit.SECONDS);
         } catch (Exception e) {
             System.out.println("Unable to Start Discovery : " + e.getMessage());
         }
+
         return respone;
     }
 
 
-    public List<JsonObject> readResponse(Process process){
+    public List<JsonObject> readResponse(Process process,String timestamp){
         List<JsonObject> listOfMetrics = new ArrayList<>();
 
         // Read the output from Go application (if any)
@@ -76,11 +65,9 @@ public class MetricPoller{
             String line;
             while ((line = reader.readLine()) != null) {
                 JsonObject object = new JsonObject(line);
-                object.put("timestamp", DateUtils.getCurrentTimeStamp());
+                object.put("startTime",timestamp);
+                object.put("endTime", DateUtils.getCurrentTimeStamp());
 
-//                if(object.getString("status").equals("fail")){
-//                    removeFailedMonitorDevice(object.getString("monitorId"),process);
-//                }
                 listOfMetrics.add(object);
                 log.info(String.valueOf(object));
             }
@@ -92,39 +79,19 @@ public class MetricPoller{
     }
 
 
-    public void sendData(Process process, JsonObject device, JsonObject discovery){
+    public String sendData(Process process, List<JsonObject> devices){
 
         // Send JSON to Go application
         OutputStream os = process.getOutputStream();
-        device.put("ip",discovery.getString("ip"));
         try {
-            os.write(device.getString("devices").getBytes());
+            os.write(devices.toString().getBytes());
             os.flush();
             os.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
 
-
-    public void removeFailedMonitorDevice(String monitorId, Process process){
-
-        // update monitor status in database
-        List<JsonObject> filteredDevices = new ArrayList<>();
-        for(JsonObject device:devices){
-            if(!device.getString("monitorId").equals(monitorId)){
-                filteredDevices.add(device);
-            }
-            else {
-                device.put("status","fail");
-                monitorService.updateMonitor(device);
-            }
-        }
-        if(filteredDevices.size() == 0){
-            process.destroyForcibly();
-            log.info("Metric Poller Process is killed as No devices available to monitor");
-        }
-        setDevices(filteredDevices);
+        return DateUtils.getCurrentTimeStamp();
     }
 
     public List<JsonObject> getDevices() {
