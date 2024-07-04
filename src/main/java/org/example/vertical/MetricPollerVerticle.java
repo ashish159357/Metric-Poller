@@ -6,6 +6,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.Message;
 import lombok.extern.slf4j.Slf4j;
+import org.example.config.ApplicationConfig;
 import org.example.constant.EventBusAddresses;
 import org.example.runnable.poller.MetricPoller;
 import org.example.utils.DateUtils;
@@ -17,14 +18,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MetricPollerVerticle extends AbstractVerticle {
 
     private ConcurrentHashMap<Long,List<JsonObject>> longListConcurrentHashMap = new ConcurrentHashMap<>();
-    private long pollingTime = 3;
+    private long pollingTime = ApplicationConfig.POLLING_TIME;
 
     public void start(Promise<Void> startPromise) throws Exception {
         Thread.currentThread().setName(Thread.currentThread().getName() + "-" + "MetricPollerVerticle");
 
         vertx.eventBus().consumer(EventBusAddresses.METRIC_POLLER, this::startPolling);
 
-        vertx.setPeriodic(5000,id -> {
+        vertx.setPeriodic(ApplicationConfig.SCHEDULER_PERIOD,id -> {
 
             for(long key:longListConcurrentHashMap.keySet()){
 
@@ -49,10 +50,8 @@ public class MetricPollerVerticle extends AbstractVerticle {
                             log.error("Metric polling failed", res.cause());
                         }
                     });
-
                 }
             }
-
         });
     }
 

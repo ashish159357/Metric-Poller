@@ -2,6 +2,7 @@ package org.example.runnable.poller;
 
 import io.vertx.core.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
+import org.example.config.ApplicationConfig;
 import org.example.config.ProcessBuilderConfig;
 import org.example.utils.DateUtils;
 import java.io.BufferedReader;
@@ -17,7 +18,7 @@ import java.util.concurrent.*;
 public class MetricPoller{
 
     private List<JsonObject> devices;
-    private final ProcessBuilderConfig processBuilderConfig = new ProcessBuilderConfig("go run /home/ashish/a4h-personal/Prototype/go-proto/myproject/main.go");
+    private final ProcessBuilderConfig processBuilderConfig = new ProcessBuilderConfig(ApplicationConfig.GO_RUN_COMMAND);
 
     public MetricPoller(List<JsonObject> device){
         this.devices = device;
